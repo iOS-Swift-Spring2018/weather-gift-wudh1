@@ -16,6 +16,8 @@ class PageVC: UIPageViewController {
     var barButtonWidth: CGFloat = 44
     var barButtonHeight: CGFloat = 44
     var listButton: UIButton!
+    var aboutButton: UIButton!
+    var aboutButtonSize: CGSize!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,16 +27,27 @@ class PageVC: UIPageViewController {
         delegate = self
         dataSource = self
         
-        var newLocation = WeatherLocation()
-        newLocation.name = ""
+        let newLocation = WeatherLocation(name: "", coordinates: "")
         locationsArray.append(newLocation)
+        loadLocations()
         
         setViewControllers([createDetailVC(forPage: 0)], direction: .forward, animated: false, completion: nil)
     }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    
+    func loadLocations() {
+        guard let locationsEncoded = UserDefaults.standard.value(forKey: "locationsArray") as? Data else {
+            print("Could not load locationsArray data from UserDefaults.")
+            return
+        }
+        let decoder = JSONDecoder()
+        if let locationsArray = try? decoder.decode(Array.self, from: locationsEncoded) as [WeatherLocation] {
+            self.locationsArray = locationsArray
+        }
+        else {
+            print("ERROR: Couldn't decode data read from UserDefaults.")
+        }
+        
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -42,11 +55,14 @@ class PageVC: UIPageViewController {
         
         configurePageControl()
         configureListButton()
+        configurePageControl()
+        configureAboutButton()
     }
     
     func configurePageControl() {
+        let largestWidth = max(barButtonWidth, aboutButton.frame.width)
         let pageControlHeight: CGFloat = barButtonHeight
-        let pageControlWidth: CGFloat = view.frame.width - (barButtonWidth * 2)
+        let pageControlWidth: CGFloat = view.frame.width - (largestWidth * 2)
         
         let safeHeight = view.frame.height - view.safeAreaInsets.bottom
         
@@ -62,6 +78,25 @@ class PageVC: UIPageViewController {
         view.addSubview(pageControl)
     }
     
+    func configureAboutButton() {
+        let aboutButtonText = "About..."
+        let aboutButtonFont = UIFont.systemFont(ofSize: 15)
+        let fontAttributes = [NSAttributedStringKey.font: aboutButtonFont]
+        aboutButtonSize = aboutButtonText.size(withAttributes: fontAttributes)
+        aboutButtonSize.height += 16
+        aboutButtonSize.width += 16
+        let safeHeight = view.frame.height - view.safeAreaInsets.bottom
+        
+        aboutButton = UIButton(frame: CGRect(x: 8, y: (safeHeight - 5) - aboutButtonSize.height, width: aboutButtonSize.width, height: aboutButtonSize.height))
+        
+        aboutButton.setTitle(aboutButtonText, for: .normal)
+        aboutButton.setTitleColor(UIColor.darkText, for: .normal)
+        aboutButton.titleLabel?.font = aboutButtonFont
+        aboutButton.addTarget(self, action: #selector(segueToAboutVC), for: .touchUpInside)
+        view.addSubview(aboutButton)
+        
+    }
+    
     func configureListButton() {
         let safeHeight = view.frame.height - view.safeAreaInsets.bottom
         
@@ -70,6 +105,10 @@ class PageVC: UIPageViewController {
         listButton.setImage(UIImage(named: "listbutton-highlighted"), for: .highlighted)
         listButton.addTarget(self, action: #selector(segueToListVC), for: .touchUpInside)
         view.addSubview(listButton)
+    }
+    
+    @objc func segueToAboutVC() {
+        performSegue(withIdentifier: "ToAboutVC", sender: nil)
     }
     
     @objc func segueToListVC() {
